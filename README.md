@@ -8,7 +8,7 @@ using multiple cores is supported.
 ## Usage ##
 
 ```
-Usage: $0 [-adhrspvzZ] imagefile.img [newimagefile.img]
+Usage: $0 [-adhorspvzZ] imagefile.img [newimagefile.img]
 
   -s         Don't expand filesystem when image is booted the first time
   -v         Be verbose
@@ -17,6 +17,7 @@ Usage: $0 [-adhrspvzZ] imagefile.img [newimagefile.img]
   -Z         Compress image after shrinking with xz
   -a         Compress image in parallel using multiple cores
   -p         Remove logs, apt archives, dhcp leases and ssh hostkeys
+  -o         Remove openWB specific files
   -d         Write debug messages in a debug log file
 ```
 
@@ -44,7 +45,7 @@ If using Ubuntu, you will likely see an error about `e2fsck` being out of date a
 ## Installation ##
 
 ```bash
-wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
+wget https://raw.githubusercontent.com/openWB/PiShrink/master/pishrink.sh
 chmod +x pishrink.sh
 sudo mv pishrink.sh /usr/local/bin
 ```
