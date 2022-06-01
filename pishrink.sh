@@ -164,6 +164,7 @@ Usage: $0 [-adhrspvzZ] imagefile.img [newimagefile.img]
 	-Z         Compress image after shrinking with xz
 	-a         Compress image in parallel using multiple cores
 	-p         Remove logs, apt archives, dhcp leases and ssh hostkeys
+	-o         Remove openWB specific files
 	-d         Write debug messages in a debug log file
 EOM
 	echo "$help"
@@ -176,13 +177,15 @@ repair=false
 parallel=false
 verbose=false
 prep=false
+prep_openwb=false
 ziptool=""
 
-while getopts ":adhprsvzZ" opt; do
+while getopts ":adhoprsvzZ" opt; do
 	case "${opt}" in
 		a) parallel=true;;
 		d) debug=true;;
 		h) help;;
+		o) prep_openwb=true;;
 		p) prep=true;;
 		r) repair=true;;
 		s) should_skip_autoexpand=true ;;
@@ -321,6 +324,15 @@ if [[ $prep == true ]]; then
 	umount "$mountdir"
 fi
 
+if [[ $prep_openwb == true ]]; then
+	info "openWB: Removing logs, chart data and mqtt broker store"
+	mountdir=$(mktemp -d)
+	mount "$loopback" "$mountdir"
+	rm -rvf "$mountdir/var/www/html/openWB/data/charge_log/*" "$mountdir/var/www/html/openWB/data/daily_log/*" "$mountdir/var/www/html/openWB/data/monthly_log/*" "$mountdir/var/www/html/openWB/data/log/*" "$mountdir/var/lib/mosquitto/mosquitto.db" "$mountdir/var/lib/mosquitto_local/mosquitto.db"
+	find "$mountdir/var/www/html/openWB" -name "__pycache__" -type d -exec rm -R {} \;
+	find "$mountdir/home/" -name ".bash_history" -type f -exec rm -vf {} \;
+	umount "$mountdir"
+fi
 
 #Make sure filesystem is ok
 checkFilesystem
