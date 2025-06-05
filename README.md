@@ -8,7 +8,7 @@ using multiple cores is supported.
 ## Usage ##
 
 ```text
-Usage: pishrink.sh [-adhnrsvzZ] imagefile.img [newimagefile.img]
+Usage: pishrink.sh [-adhnoprsvzZ] imagefile.img [newimagefile.img]
 
   -s         Don't expand filesystem when image is booted the first time
   -v         Be verbose
@@ -17,6 +17,8 @@ Usage: pishrink.sh [-adhnrsvzZ] imagefile.img [newimagefile.img]
   -z         Compress image after shrinking with gzip
   -Z         Compress image after shrinking with xz
   -a         Compress image in parallel using multiple cores
+  -p         Remove logs, apt archives, dhcp leases and ssh hostkeys
+  -o         Remove openWB specific files
   -d         Write debug messages in a debug log file
 ```
 
@@ -55,7 +57,7 @@ If you are on Debian/Ubuntu you can install all the packages you would need by r
 Run the block below to install PiShrink onto your system.
 
 ```bash
-wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
+wget https://raw.githubusercontent.com/openWB/PiShrink/master/pishrink.sh
 chmod +x pishrink.sh
 sudo mv pishrink.sh /usr/local/bin
 ```
