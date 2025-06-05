@@ -31,7 +31,8 @@ function cleanup() {
 		losetup -d "$loopback"
 	fi
 	if [ "$debug" = true ]; then
-		local old_owner=$(stat -c %u:%g "$src")
+		local old_owner
+		old_owner=$(stat -c %u:%g "$src")
 		chown "$old_owner" "$LOGFILE"
 	fi
 
@@ -60,14 +61,13 @@ function checkFilesystem() {
 	e2fsck -y "$loopback"
 	(( $? < 4 )) && return
 
-if [[ $repair == true ]]; then
-	info "Trying to recover corrupted filesystem - Phase 2"
-	e2fsck -fy -b 32768 "$loopback"
-	(( $? < 4 )) && return
-fi
-	error $LINENO "Filesystem recoveries failed. Giving up..."
-	exit 9
-
+	if [[ $repair == true ]]; then
+		info "Trying to recover corrupted filesystem - Phase 2"
+		e2fsck -fy -b 32768 "$loopback"
+		(( $? < 4 )) && return
+	fi
+		error $LINENO "Filesystem recoveries failed. Giving up..."
+		exit 9
 }
 
 function set_autoexpand() {
@@ -82,11 +82,11 @@ function set_autoexpand() {
       return
     fi
 
-    if [ ! -d "$mountdir/etc" ]; then
-        info "/etc not found, autoexpand will not be enabled"
-        umount "$mountdir"
-        return
-    fi
+		if [ ! -d "$mountdir/etc" ]; then
+				info "/etc not found, autoexpand will not be enabled"
+				umount "$mountdir"
+				return
+		fi
 
     if [[ ! -f "$mountdir/etc/rc.local" ]]; then
         info "An existing /etc/rc.local was not found, autoexpand may fail..."
@@ -102,20 +102,20 @@ cat <<'EOFRC' > "$mountdir/etc/rc.local"
 #!/bin/bash
 ## PiShrink https://github.com/Drewsif/PiShrink ##
 do_expand_rootfs() {
-  ROOT_PART=$(mount | sed -n 's|^/dev/\(.*\) on / .*|\1|p')
+	ROOT_PART=$(mount | sed -n 's|^/dev/\(.*\) on / .*|\1|p')
 
-  PART_NUM=${ROOT_PART#mmcblk0p}
-  if [ "$PART_NUM" = "$ROOT_PART" ]; then
-    echo "$ROOT_PART is not an SD card. Don't know how to expand"
-    return 0
-  fi
+	PART_NUM=${ROOT_PART#mmcblk0p}
+	if [ "$PART_NUM" = "$ROOT_PART" ]; then
+		echo "$ROOT_PART is not an SD card. Don't know how to expand"
+		return 0
+	fi
 
-  # Get the starting offset of the root partition
-  PART_START=$(parted /dev/mmcblk0 -ms unit s p | grep "^${PART_NUM}" | cut -f 2 -d: | sed 's/[^0-9]//g')
-  [ "$PART_START" ] || return 1
-  # Return value will likely be error for fdisk as it fails to reload the
-  # partition table because the root fs is mounted
-  fdisk /dev/mmcblk0 <<EOF
+	# Get the starting offset of the root partition
+	PART_START=$(parted /dev/mmcblk0 -ms unit s p | grep "^${PART_NUM}" | cut -f 2 -d: | sed 's/[^0-9]//g')
+	[ "$PART_START" ] || return 1
+	# Return value will likely be error for fdisk as it fails to reload the
+	# partition table because the root fs is mounted
+	fdisk /dev/mmcblk0 <<EOF
 p
 d
 $PART_NUM
@@ -141,7 +141,7 @@ exit
 raspi_config_expand() {
 /usr/bin/env raspi-config --expand-rootfs
 if [[ $? != 0 ]]; then
-  return -1
+	return -1
 else
   rm -f /etc/rc.local; cp -fp /etc/rc.local.bak /etc/rc.local && /etc/rc.local
   reboot
@@ -178,6 +178,8 @@ Usage: $0 [-adhnrsvzZ] imagefile.img [newimagefile.img]
   -z         Compress image after shrinking with gzip
   -Z         Compress image after shrinking with xz
   -a         Compress image in parallel using multiple cores
+  -p         Remove logs, apt archives, dhcp leases and ssh hostkeys
+  -o         Remove openWB specific files
   -d         Write debug messages in a debug log file
 EOM
 	echo "$help"
@@ -190,6 +192,8 @@ update_check=true
 repair=false
 parallel=false
 verbose=false
+prep=false
+prep_openwb=false
 ziptool=""
 
 while getopts ":adnhrsvzZ" opt; do
@@ -198,6 +202,8 @@ while getopts ":adnhrsvzZ" opt; do
     d) debug=true;;
     n) update_check=false;;
     h) help;;
+    o) prep_openwb=true;;
+    p) prep=true;;
     r) repair=true;;
     s) should_skip_autoexpand=true ;;
     v) verbose=true;;
@@ -232,16 +238,16 @@ img="$1"
 
 #Usage checks
 if [[ -z "$img" ]]; then
-  help
+	help
 fi
 
 if [[ ! -f "$img" ]]; then
-  error $LINENO "$img is not a file..."
-  exit 2
+	error $LINENO "$img is not a file..."
+	exit 2
 fi
 if (( EUID != 0 )); then
-  error $LINENO "You need to be running as root."
-  exit 3
+	error $LINENO "You need to be running as root."
+	exit 3
 fi
 
 # set locale to POSIX(English) temporarily
@@ -253,7 +259,7 @@ export LANG=POSIX
 
 # check selected compression tool is supported and installed
 if [[ -n $ziptool ]]; then
-	if [[ ! " ${ZIPTOOLS[@]} " =~ $ziptool ]]; then
+	if [[ ! " ${ZIPTOOLS[*]} " =~ $ziptool ]]; then
 		error $LINENO "$ziptool is an unsupported ziptool."
 		exit 17
 	else
@@ -267,28 +273,28 @@ fi
 
 #Check that what we need is installed
 for command in $REQUIRED_TOOLS; do
-  command -v $command >/dev/null 2>&1
-  if (( $? != 0 )); then
-    error $LINENO "$command is not installed."
-    exit 4
-  fi
+	command -v "$command" >/dev/null 2>&1
+	if (( $? != 0 )); then
+		error $LINENO "$command is not installed."
+		exit 4
+	fi
 done
 
 #Copy to new file if requested
 if [ -n "$2" ]; then
-  f="$2"
-  if [[ -n $ziptool && "${f##*.}" == "${ZIPEXTENSIONS[$ziptool]}" ]]; then	# remove zip extension if zip requested because zip tool will complain about extension
-    f="${f%.*}"
-  fi
-  info "Copying $1 to $f..."
-  cp --reflink=auto --sparse=always "$1" "$f"
-  if (( $? != 0 )); then
-    error $LINENO "Could not copy file..."
-    exit 5
-  fi
-  old_owner=$(stat -c %u:%g "$1")
-  chown "$old_owner" "$f"
-  img="$f"
+	f="$2"
+	if [[ -n $ziptool && "${f##*.}" == "${ZIPEXTENSIONS[$ziptool]}" ]]; then	# remove zip extension if zip requested because zip tool will complain about extension
+		f="${f%.*}"
+	fi
+	info "Copying $1 to $f..."
+	cp --reflink=auto --sparse=always "$1" "$f"
+	if (( $? != 0 )); then
+		error $LINENO "Could not copy file..."
+		exit 5
+	fi
+	old_owner=$(stat -c %u:%g "$1")
+	chown "$old_owner" "$f"
+	img="$f"
 fi
 
 # cleanup at script exit
@@ -299,7 +305,7 @@ info "Gathering data"
 beforesize="$(ls -lh "$img" | cut -d ' ' -f 5)"
 parted_output="$(parted -ms "$img" unit B print)"
 rc=$?
-if (( $rc )); then
+if (( rc )); then
 	error $LINENO "parted failed with rc $rc"
 	info "Possibly invalid image. Run 'parted $img unit B print' manually to investigate"
 	exit 6
@@ -307,17 +313,17 @@ fi
 partnum="$(echo "$parted_output" | tail -n 1 | cut -d ':' -f 1)"
 partstart="$(echo "$parted_output" | tail -n 1 | cut -d ':' -f 2 | tr -d 'B')"
 if [ -z "$(parted -s "$img" unit B print | grep "$partstart" | grep logical)" ]; then
-    parttype="primary"
+	parttype="primary"
 else
-    parttype="logical"
+	parttype="logical"
 fi
 loopback="$(losetup -f --show -o "$partstart" "$img")"
 tune2fs_output="$(tune2fs -l "$loopback")"
 rc=$?
-if (( $rc )); then
-    echo "$tune2fs_output"
-    error $LINENO "tune2fs failed. Unable to shrink this type of image"
-    exit 7
+if (( rc )); then
+	echo "$tune2fs_output"
+	error $LINENO "tune2fs failed. Unable to shrink this type of image"
+	exit 7
 fi
 
 currentsize="$(echo "$tune2fs_output" | grep '^Block count:' | tr -d ' ' | cut -d ':' -f 2)"
@@ -327,11 +333,30 @@ logVariables $LINENO beforesize parted_output partnum partstart parttype tune2fs
 
 #Check if we should make pi expand rootfs on next boot
 if [ "$parttype" == "logical" ]; then
-  echo "WARNING: PiShrink does not yet support autoexpanding of this type of image"
+	echo "WARNING: PiShrink does not yet support autoexpanding of this type of image"
 elif [ "$should_skip_autoexpand" = false ]; then
-  set_autoexpand
+	set_autoexpand
 else
-  echo "Skipping autoexpanding process..."
+	echo "Skipping autoexpanding process..."
+fi
+
+if [[ $prep == true ]]; then
+	info "Syspreping: Removing logs, apt archives, dhcp leases and ssh hostkeys"
+	mountdir=$(mktemp -d)
+	mount "$loopback" "$mountdir"
+	rm -rvf "$mountdir/var/cache/apt/archives/*" "$mountdir/var/lib/dhcpcd5/*" "$mountdir/var/log/*" "$mountdir/var/tmp/*" "$mountdir/tmp/*" "$mountdir/etc/ssh/*_host_*"
+	ln -sv /lib/systemd/system/regenerate_ssh_host_keys.service "$mountdir/etc/systemd/system/multi-user.target.wants/regenerate_ssh_host_keys.service"
+	umount "$mountdir"
+fi
+
+if [[ $prep_openwb == true ]]; then
+	info "openWB: Removing logs, chart data and mqtt broker store"
+	mountdir=$(mktemp -d)
+	mount "$loopback" "$mountdir"
+	rm -rvf "$mountdir/var/www/html/openWB/data/charge_log/*" "$mountdir/var/www/html/openWB/data/daily_log/*" "$mountdir/var/www/html/openWB/data/monthly_log/*" "$mountdir/var/www/html/openWB/data/log/*" "$mountdir/var/lib/mosquitto/mosquitto.db" "$mountdir/var/lib/mosquitto_local/mosquitto.db"
+	find "$mountdir/var/www/html/openWB" -name "__pycache__" -type d -exec rm -R {} \;
+	find "$mountdir/home/" -name ".bash_history" -type f -exec rm -vf {} \;
+	umount "$mountdir"
 fi
 
 #Make sure filesystem is ok
