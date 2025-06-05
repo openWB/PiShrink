@@ -188,7 +188,7 @@ EOM
 
 should_skip_autoexpand=false
 debug=false
-update_check=true
+update_check=false  # do not check for updates as we have no releases yet
 repair=false
 parallel=false
 verbose=false
@@ -221,13 +221,13 @@ if [ "$debug" = true ]; then
 	exec 2> >(stdbuf -i0 -o0 -e0 tee -a "$LOGFILE" >&2)
 fi
 
-echo -e "PiShrink $version - https://github.com/Drewsif/PiShrink\n"
+echo -e "PiShrink $version - https://github.com/openWB/PiShrink\n"
 
 # Try and check for updates
 if $update_check; then
-  latest_release=$(curl -m 5 https://api.github.com/repos/Drewsif/PiShrink/releases/latest 2>/dev/null | grep -i "tag_name" 2>/dev/null | awk -F '"' '{print $4}' 2>/dev/null)
+  latest_release=$(curl -m 5 https://api.github.com/repos/openWB/PiShrink/releases/latest 2>/dev/null | grep -i "tag_name" 2>/dev/null | awk -F '"' '{print $4}' 2>/dev/null)
   if [[ $? ]] && [ "$latest_release" \> "$version" ]; then
-    echo "WARNING: You do not appear to be running the latest version of PiShrink. Head on over to https://github.com/Drewsif/PiShrink to grab $latest_release"
+    echo "WARNING: You do not appear to be running the latest version of PiShrink. Head on over to https://github.com/openWB/PiShrink to grab $latest_release"
     echo ""
   fi
 fi
