@@ -349,13 +349,22 @@ if [[ $prep == true ]]; then
 	umount "$mountdir"
 fi
 
+# If the prep_openwb flag is set to true, perform cleanup specific to openWB files and directories.
 if [[ $prep_openwb == true ]]; then
-	info "openWB: Removing logs, chart data and mqtt broker store"
+	info "openWB: Removing logs, chart data, backup files, restore files, data migration files, mqtt broker store, python cache directories, bash history, configuration file and serial number file"
 	mountdir=$(mktemp -d)
 	mount "$loopback" "$mountdir"
-	rm -rvf "$mountdir/var/www/html/openWB/data/charge_log/*" "$mountdir/var/www/html/openWB/data/daily_log/*" "$mountdir/var/www/html/openWB/data/monthly_log/*" "$mountdir/var/www/html/openWB/data/log/*" "$mountdir/var/lib/mosquitto/mosquitto.db" "$mountdir/var/lib/mosquitto_local/mosquitto.db"
-	find "$mountdir/var/www/html/openWB" -name "__pycache__" -type d -exec rm -R {} \;
-	find "$mountdir/home/" -name ".bash_history" -type f -exec rm -vf {} \;
+	rm -rvf "$mountdir/var/www/html/openWB/data/charge_log/*" \
+			"$mountdir/var/www/html/openWB/data/daily_log/*" \
+			"$mountdir/var/www/html/openWB/data/monthly_log/*" \
+			"$mountdir/var/www/html/openWB/data/log/*" \
+			"$mountdir/var/www/html/openWB/data/backup/*" \
+			"$mountdir/var/www/html/openWB/data/restore/*" \
+			"$mountdir/var/www/html/openWB/data/data_migration/*" \
+			"$mountdir/var/lib/mosquitto/mosquitto.db" \
+			"$mountdir/var/lib/mosquitto_local/mosquitto.db"
+	find "$mountdir/var/www/html/openWB" \( -name "__pycache__" \) -type d -exec rm -R {} \;
+	find "$mountdir/home/" \( -name ".bash_history" -o -name "configuration.json" -o -name "snnumber" \) -type f -exec rm -vf {} \;
 	umount "$mountdir"
 fi
 
