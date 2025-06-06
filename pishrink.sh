@@ -344,7 +344,8 @@ if [[ $prep == true ]]; then
 	info "Syspreping: Removing logs, apt archives, dhcp leases and ssh hostkeys"
 	mountdir=$(mktemp -d)
 	mount "$loopback" "$mountdir"
-	rm -rf "$mountdir"/var/cache/apt/archives/* "$mountdir"/var/lib/dhcpcd/* "$mountdir"/var/log/* "$mountdir"/var/tmp/* "$mountdir"/tmp/* "$mountdir"/etc/ssh/*_host_*
+	rm -rf "$mountdir"/var/cache/apt/archives/* "$mountdir"/var/lib/dhcpcd/* "$mountdir"/var/tmp/* "$mountdir"/tmp/* "$mountdir"/etc/ssh/*_host_*
+	find "$mountdir"/var/log/ -type f -delete
 	if [[ -f "$mountdir"/lib/systemd/system/regenerate_ssh_host_keys.service ]] && ! [[ -L "$mountdir"/etc/systemd/system/multi-user.target.wants/regenerate_ssh_host_keys.service ]]; then
 		ln -s /lib/systemd/system/regenerate_ssh_host_keys.service "$mountdir"/etc/systemd/system/multi-user.target.wants/regenerate_ssh_host_keys.service
 	fi
@@ -366,7 +367,7 @@ if [[ $prep_openwb == true ]]; then
 			"$mountdir"/var/lib/mosquitto/mosquitto.db \
 			"$mountdir"/var/lib/mosquitto_local/mosquitto.db
 	find "$mountdir"/var/www/html/openWB \( -name "__pycache__" \) -type d -exec rm -rf {} \;
-	find "$mountdir"/home/ \( -name ".bash_history" -o -name "configuration.json" -o -name "snnumber" \) -type f -exec rm -f {} \;
+	find "$mountdir"/home/ \( -name ".bash_history" -o -name "configuration.json" -o -name "snnumber" \) -type f -delete
 	umount "$mountdir"
 fi
 
